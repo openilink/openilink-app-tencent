@@ -1,0 +1,18 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8101:8101"
+    environment:
+      HUB_URL: "${HUB_URL}"
+      BASE_URL: "${BASE_URL}"
+      TENCENT_SECRET_ID: "${TENCENT_SECRET_ID}"
+      TENCENT_SECRET_KEY: "${TENCENT_SECRET_KEY}"
+      TENCENT_REGION: "${TENCENT_REGION:-ap-guangzhou}"
+      DB_PATH: /data/tencent.db
+    volumes:
+      - app-data:/data
+    restart: unless-stopped
+
+volumes:
+  app-data:

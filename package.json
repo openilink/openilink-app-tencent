@@ -1,0 +1,37 @@
+{
+  "name": "@openilink/app-tencent",
+  "version": "0.1.0",
+  "description": "OpeniLink Hub App — 通过微信管理腾讯云资源（CVM/DNS/CDN/SSL/CLB/账单/安全组）",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration/"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.2",
+    "tencentcloud-sdk-nodejs-billing": "^4.0.0",
+    "tencentcloud-sdk-nodejs-cdn": "^4.0.0",
+    "tencentcloud-sdk-nodejs-clb": "^4.0.0",
+    "tencentcloud-sdk-nodejs-cvm": "^4.0.0",
+    "tencentcloud-sdk-nodejs-dnspod": "^4.0.0",
+    "tencentcloud-sdk-nodejs-lighthouse": "^4.0.0",
+    "tencentcloud-sdk-nodejs-ssl": "^4.0.0",
+    "tencentcloud-sdk-nodejs-vpc": "^4.1.200"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT"
+}
