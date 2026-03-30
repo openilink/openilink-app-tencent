@@ -1,6 +1,6 @@
 /**
  * SCF 云函数 Tools
- * 提供云函数的列出、查看详情和调用能力
+ * 提供云函数的列出、查看详情、调用和删除能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -47,6 +47,19 @@ const definitions: ToolDefinition[] = [
           description: "调用类型: RequestResponse（同步）或 Event（异步），默认 RequestResponse",
         },
         payload: { type: "string", description: "函数入参 JSON 字符串" },
+        namespace: { type: "string", description: "命名空间，默认 default" },
+      },
+      required: ["function_name"],
+    },
+  },
+  {
+    name: "delete_function",
+    description: "删除云函数",
+    command: "delete_function",
+    parameters: {
+      type: "object",
+      properties: {
+        function_name: { type: "string", description: "函数名称" },
         namespace: { type: "string", description: "命名空间，默认 default" },
       },
       required: ["function_name"],
@@ -154,6 +167,27 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return lines.join("\n");
     } catch (err: any) {
       return `调用云函数失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 删除云函数
+  handlers.set("delete_function", async (ctx) => {
+    const functionName: string = ctx.args.function_name ?? "";
+    const namespace: string = ctx.args.namespace ?? "default";
+
+    if (!functionName) {
+      return "请提供要删除的函数名称";
+    }
+
+    try {
+      await clients.scf.DeleteFunction({
+        FunctionName: functionName,
+        Namespace: namespace,
+      });
+
+      return `云函数 ${functionName} 已删除（命名空间: ${namespace}）`;
+    } catch (err: any) {
+      return `删除云函数失败: ${err.message ?? err}`;
     }
   });
 

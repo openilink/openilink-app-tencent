@@ -1,47 +1,89 @@
 # OpeniLink 腾讯云 App
 
-通过微信管理腾讯云资源 -- 23 个 Tools，管理 CVM / 轻量服务器 / DNS / CDN / SSL / CLB / 账单 / 安全组。
+通过微信管理腾讯云资源 -- 59 个 Tools，管理 CVM / 轻量服务器 / DNS / CDN / SSL / CLB / 账单 / 安全组 / 数据库 / 云函数 / 域名注册。
 
 ## 功能概览
 
-### CVM 云服务器 (5 Tools)
+### CVM 云服务器 (12 Tools)
 - `list_instances` - 列出 CVM 实例
 - `get_instance` - 获取实例详情
 - `start_instances` - 启动实例
 - `stop_instances` - 停止实例
 - `reboot_instances` - 重启实例
+- `list_images` - 列出可用镜像
+- `list_key_pairs` - 列出 SSH 密钥对
+- `list_disks` - 列出实例磁盘信息
+- `create_instance` - 创建 CVM 实例
+- `terminate_instance` - 退还/销毁实例
+- `modify_instance_name` - 修改实例名称
+- `reset_instance_password` - 重置实例密码
 
-### 轻量应用服务器 (2 Tools)
+### 轻量应用服务器 (5 Tools)
 - `list_lighthouse` - 列出轻量服务器
 - `get_lighthouse` - 获取轻量服务器详情
+- `start_lighthouse` - 启动轻量服务器
+- `stop_lighthouse` - 关闭轻量服务器
+- `reboot_lighthouse` - 重启轻量服务器
 
-### DNS 解析 (4 Tools)
+### DNS 解析 (6 Tools)
 - `list_domains` - 列出域名
 - `list_dns_records` - 列出解析记录
 - `create_dns_record` - 创建解析记录
 - `delete_dns_record` - 删除解析记录
+- `update_dns_record` - 更新解析记录
+- `set_record_status` - 启用/暂停解析记录
 
-### CDN (3 Tools)
+### CDN (9 Tools)
 - `list_cdn_domains` - 列出 CDN 域名
 - `purge_urls` - 刷新 URL 缓存
 - `push_urls` - 预热 URL
+- `get_cdn_domain_detail` - 获取 CDN 域名详细配置
+- `get_cdn_usage` - 查询 CDN 用量统计
+- `add_cdn_domain` - 添加 CDN 加速域名
+- `delete_cdn_domain` - 删除 CDN 加速域名
+- `start_cdn_domain` - 启用 CDN 域名
+- `stop_cdn_domain` - 停用 CDN 域名
 
 ### SSL 证书 (2 Tools)
 - `list_certificates` - 列出证书
 - `get_certificate` - 获取证书详情
 
-### CLB 负载均衡 (2 Tools)
+### CLB 负载均衡 (4 Tools)
 - `list_load_balancers` - 列出 CLB 实例
 - `list_listeners` - 列出监听器
+- `create_load_balancer` - 创建 CLB 实例
+- `delete_load_balancer` - 删除 CLB 实例
 
-### 账单 (3 Tools)
+### 账单 (4 Tools)
 - `get_balance` - 查询余额
 - `list_bills` - 账单明细
 - `get_cost_summary` - 按产品汇总费用
+- `describe_deal_info` - 查询订单信息
 
-### 安全组 (2 Tools)
+### 安全组 (5 Tools)
 - `list_security_groups` - 列出安全组
 - `get_security_group_rules` - 获取安全组规则
+- `create_security_group` - 创建安全组
+- `add_ingress_rule` - 添加入站规则
+- `delete_ingress_rule` - 删除入站规则
+
+### 数据库 (6 Tools)
+- `list_mysql_instances` - 列出 MySQL 实例
+- `get_mysql_instance` - 获取 MySQL 实例详情
+- `list_redis_instances` - 列出 Redis 实例
+- `get_redis_instance` - 获取 Redis 实例详情
+- `list_mongodb_instances` - 列出 MongoDB 实例
+- `restart_mysql` - 重启 MySQL 实例
+
+### 云函数 SCF (4 Tools)
+- `list_functions` - 列出云函数
+- `get_function` - 获取云函数详情
+- `invoke_function` - 调用云函数
+- `delete_function` - 删除云函数
+
+### 域名注册 (2 Tools)
+- `list_registered_domains` - 列出已注册域名
+- `get_domain_info` - 获取域名注册详情
 
 ## 快速开始
 

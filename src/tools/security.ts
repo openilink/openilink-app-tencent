@@ -1,6 +1,6 @@
 /**
  * 安全组 Tools
- * 提供安全组列出和规则查看能力（通过 VPC API）
+ * 提供安全组列出、查看规则、创建安全组、添加/删除规则能力（通过 VPC API）
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -30,6 +30,52 @@ const definitions: ToolDefinition[] = [
         security_group_id: { type: "string", description: "安全组 ID，如 sg-xxxxxxxx" },
       },
       required: ["security_group_id"],
+    },
+  },
+  {
+    name: "create_security_group",
+    description: "创建安全组",
+    command: "create_security_group",
+    parameters: {
+      type: "object",
+      properties: {
+        group_name: { type: "string", description: "安全组名称" },
+        group_description: { type: "string", description: "安全组描述" },
+      },
+      required: ["group_name"],
+    },
+  },
+  {
+    name: "add_ingress_rule",
+    description: "添加安全组入站规则",
+    command: "add_ingress_rule",
+    parameters: {
+      type: "object",
+      properties: {
+        security_group_id: { type: "string", description: "安全组 ID" },
+        protocol: { type: "string", description: "协议: TCP、UDP、ICMP、ICMPv6、ALL" },
+        port: { type: "string", description: "端口，如 80、80-443、ALL" },
+        cidr_block: { type: "string", description: "来源 CIDR，如 0.0.0.0/0" },
+        action: { type: "string", description: "策略: ACCEPT（放通）或 DROP（拒绝），默认 ACCEPT" },
+        description: { type: "string", description: "规则描述" },
+      },
+      required: ["security_group_id", "protocol", "port", "cidr_block"],
+    },
+  },
+  {
+    name: "delete_ingress_rule",
+    description: "删除安全组入站规则",
+    command: "delete_ingress_rule",
+    parameters: {
+      type: "object",
+      properties: {
+        security_group_id: { type: "string", description: "安全组 ID" },
+        protocol: { type: "string", description: "协议: TCP、UDP、ICMP、ICMPv6、ALL" },
+        port: { type: "string", description: "端口，如 80、80-443、ALL" },
+        cidr_block: { type: "string", description: "来源 CIDR，如 0.0.0.0/0" },
+        action: { type: "string", description: "策略: ACCEPT 或 DROP" },
+      },
+      required: ["security_group_id", "protocol", "port", "cidr_block", "action"],
     },
   },
 ];
@@ -114,6 +160,88 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return result.join("\n");
     } catch (err: any) {
       return `获取安全组规则失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 创建安全组
+  handlers.set("create_security_group", async (ctx) => {
+    const groupName: string = ctx.args.group_name ?? "";
+    const groupDescription: string = ctx.args.group_description ?? "";
+
+    try {
+      const res = await clients.vpc.CreateSecurityGroup({
+        GroupName: groupName,
+        GroupDescription: groupDescription,
+      });
+
+      const sg = res.SecurityGroup as any;
+      const sgId = sg?.SecurityGroupId ?? "未知";
+      return `安全组创建成功!\nID: ${sgId}\n名称: ${groupName}${groupDescription ? `\n描述: ${groupDescription}` : ""}`;
+    } catch (err: any) {
+      return `创建安全组失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 添加安全组入站规则
+  handlers.set("add_ingress_rule", async (ctx) => {
+    const securityGroupId: string = ctx.args.security_group_id ?? "";
+    const protocol: string = ctx.args.protocol ?? "";
+    const port: string = ctx.args.port ?? "";
+    const cidrBlock: string = ctx.args.cidr_block ?? "";
+    const action: string = ctx.args.action ?? "ACCEPT";
+    const description: string = ctx.args.description ?? "";
+
+    try {
+      const policy: any = {
+        Protocol: protocol,
+        Port: port,
+        CidrBlock: cidrBlock,
+        Action: action,
+      };
+
+      if (description) {
+        policy.PolicyDescription = description;
+      }
+
+      await clients.vpc.CreateSecurityGroupPolicies({
+        SecurityGroupId: securityGroupId,
+        SecurityGroupPolicySet: {
+          Ingress: [policy],
+        },
+      });
+
+      return `入站规则添加成功!\n安全组: ${securityGroupId}\n${action} ${protocol}:${port} ← ${cidrBlock}${description ? ` (${description})` : ""}`;
+    } catch (err: any) {
+      return `添加入站规则失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 删除安全组入站规则
+  handlers.set("delete_ingress_rule", async (ctx) => {
+    const securityGroupId: string = ctx.args.security_group_id ?? "";
+    const protocol: string = ctx.args.protocol ?? "";
+    const port: string = ctx.args.port ?? "";
+    const cidrBlock: string = ctx.args.cidr_block ?? "";
+    const action: string = ctx.args.action ?? "";
+
+    try {
+      await clients.vpc.DeleteSecurityGroupPolicies({
+        SecurityGroupId: securityGroupId,
+        SecurityGroupPolicySet: {
+          Ingress: [
+            {
+              Protocol: protocol,
+              Port: port,
+              CidrBlock: cidrBlock,
+              Action: action,
+            },
+          ],
+        },
+      });
+
+      return `入站规则已删除!\n安全组: ${securityGroupId}\n${action} ${protocol}:${port} ← ${cidrBlock}`;
+    } catch (err: any) {
+      return `删除入站规则失败: ${err.message ?? err}`;
     }
   });
 

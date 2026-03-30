@@ -1,6 +1,6 @@
 /**
  * CLB 负载均衡 Tools
- * 提供负载均衡器和监听器的列出能力
+ * 提供负载均衡器和监听器的列出、创建、删除能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -30,6 +30,39 @@ const definitions: ToolDefinition[] = [
         load_balancer_id: { type: "string", description: "负载均衡实例 ID" },
       },
       required: ["load_balancer_id"],
+    },
+  },
+  {
+    name: "create_load_balancer",
+    description: "创建 CLB 负载均衡实例",
+    command: "create_load_balancer",
+    parameters: {
+      type: "object",
+      properties: {
+        load_balancer_type: {
+          type: "string",
+          description: "类型: OPEN（公网）或 INTERNAL（内网），默认 OPEN",
+        },
+        load_balancer_name: { type: "string", description: "负载均衡名称" },
+        vpc_id: { type: "string", description: "VPC ID（内网 CLB 必填）" },
+        subnet_id: { type: "string", description: "子网 ID（内网 CLB 必填）" },
+      },
+    },
+  },
+  {
+    name: "delete_load_balancer",
+    description: "删除 CLB 负载均衡实例",
+    command: "delete_load_balancer",
+    parameters: {
+      type: "object",
+      properties: {
+        load_balancer_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "要删除的负载均衡实例 ID 列表",
+        },
+      },
+      required: ["load_balancer_ids"],
     },
   },
 ];
@@ -97,6 +130,57 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `负载均衡 ${loadBalancerId} 的监听器列表（共 ${listeners.length} 个）:\n${lines.join("\n")}`;
     } catch (err: any) {
       return `列出监听器失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 创建负载均衡实例
+  handlers.set("create_load_balancer", async (ctx) => {
+    const loadBalancerType: string = ctx.args.load_balancer_type ?? "OPEN";
+    const loadBalancerName: string = ctx.args.load_balancer_name ?? "";
+    const vpcId: string = ctx.args.vpc_id ?? "";
+    const subnetId: string = ctx.args.subnet_id ?? "";
+
+    try {
+      const params: any = {
+        LoadBalancerType: loadBalancerType,
+      };
+
+      if (loadBalancerName) {
+        params.LoadBalancerName = loadBalancerName;
+      }
+
+      if (vpcId) {
+        params.VpcId = vpcId;
+      }
+
+      if (subnetId) {
+        params.SubnetId = subnetId;
+      }
+
+      const res = await clients.clb.CreateLoadBalancer(params);
+      const lbIds = res.LoadBalancerIds ?? [];
+      return `CLB 负载均衡创建成功!\n实例 ID: ${lbIds.join(", ")}\n类型: ${loadBalancerType}${loadBalancerName ? `\n名称: ${loadBalancerName}` : ""}`;
+    } catch (err: any) {
+      return `创建负载均衡失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 删除负载均衡实例
+  handlers.set("delete_load_balancer", async (ctx) => {
+    const loadBalancerIds: string[] = ctx.args.load_balancer_ids ?? [];
+
+    if (loadBalancerIds.length === 0) {
+      return "请提供要删除的负载均衡实例 ID 列表";
+    }
+
+    try {
+      await clients.clb.DeleteLoadBalancer({
+        LoadBalancerIds: loadBalancerIds,
+      });
+
+      return `已删除负载均衡实例: ${loadBalancerIds.join(", ")}`;
+    } catch (err: any) {
+      return `删除负载均衡失败: ${err.message ?? err}`;
     }
   });
 

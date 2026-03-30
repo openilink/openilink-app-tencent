@@ -1,6 +1,6 @@
 /**
  * 计费 Tools
- * 提供余额查询、账单列表和费用概览能力
+ * 提供余额查询、账单列表、费用概览和订单查询能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -47,6 +47,19 @@ const definitions: ToolDefinition[] = [
         },
       },
       required: ["month"],
+    },
+  },
+  {
+    name: "describe_deal_info",
+    description: "查询订单信息",
+    command: "describe_deal_info",
+    parameters: {
+      type: "object",
+      properties: {
+        deal_id: { type: "string", description: "订单号" },
+        limit: { type: "number", description: "返回数量，默认 20" },
+        offset: { type: "number", description: "偏移量，默认 0" },
+      },
     },
   },
 ];
@@ -153,6 +166,46 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `${month} 费用概览（总计: ¥${totalCost}）:\n${lines.join("\n")}`;
     } catch (err: any) {
       return `查询费用概览失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 查询订单信息
+  handlers.set("describe_deal_info", async (ctx) => {
+    const dealId: string = ctx.args.deal_id ?? "";
+    const limit = (ctx.args.limit as number) ?? 20;
+    const offset = (ctx.args.offset as number) ?? 0;
+
+    try {
+      const params: any = {
+        Limit: limit,
+        Offset: offset,
+      };
+
+      if (dealId) {
+        params.DealId = dealId;
+      }
+
+      const res = await clients.billing.DescribeDealsByCond(params);
+      const deals = res.Deals ?? [];
+      const total = res.TotalCount ?? 0;
+
+      if (deals.length === 0) {
+        return dealId ? `未找到订单: ${dealId}` : "暂无订单记录";
+      }
+
+      const lines = deals.map((d: any, i: number) => {
+        const orderId = d.OrderId ?? "";
+        const status = d.Status !== undefined ? String(d.Status) : "未知";
+        const payer = d.Payer ?? "未知";
+        const createTime = d.CreateTime ?? "未知";
+        const productName = d.ProductName ?? "未知";
+        const realCost = d.RealTotalCost ?? "0";
+        return `${offset + i + 1}. 订单 ${orderId}\n   产品: ${productName} | 状态: ${status}\n   费用: ¥${realCost} | 创建: ${createTime}`;
+      });
+
+      return `订单列表（共 ${total} 条，当前显示 ${deals.length} 条）:\n${lines.join("\n")}`;
+    } catch (err: any) {
+      return `查询订单失败: ${err.message ?? err}`;
     }
   });
 

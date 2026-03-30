@@ -1,6 +1,6 @@
 /**
  * 轻量应用服务器 Tools
- * 提供 Lighthouse 实例的列出和查看能力
+ * 提供 Lighthouse 实例的列出、查看、开机、关机、重启能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -30,6 +30,54 @@ const definitions: ToolDefinition[] = [
         instance_id: { type: "string", description: "实例 ID，如 lhins-xxxxxxxx" },
       },
       required: ["instance_id"],
+    },
+  },
+  {
+    name: "start_lighthouse",
+    description: "启动轻量应用服务器实例",
+    command: "start_lighthouse",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "实例 ID 列表",
+        },
+      },
+      required: ["instance_ids"],
+    },
+  },
+  {
+    name: "stop_lighthouse",
+    description: "关闭轻量应用服务器实例",
+    command: "stop_lighthouse",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "实例 ID 列表",
+        },
+      },
+      required: ["instance_ids"],
+    },
+  },
+  {
+    name: "reboot_lighthouse",
+    description: "重启轻量应用服务器实例",
+    command: "reboot_lighthouse",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "实例 ID 列表",
+        },
+      },
+      required: ["instance_ids"],
     },
   },
 ];
@@ -102,6 +150,63 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return lines.join("\n");
     } catch (err: any) {
       return `获取轻量服务器详情失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 启动轻量服务器实例
+  handlers.set("start_lighthouse", async (ctx) => {
+    const instanceIds: string[] = ctx.args.instance_ids ?? [];
+
+    if (instanceIds.length === 0) {
+      return "请提供要启动的实例 ID 列表";
+    }
+
+    try {
+      await clients.lighthouse.StartInstances({
+        InstanceIds: instanceIds,
+      });
+
+      return `已发起开机请求，实例: ${instanceIds.join(", ")}`;
+    } catch (err: any) {
+      return `启动轻量服务器失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 关闭轻量服务器实例
+  handlers.set("stop_lighthouse", async (ctx) => {
+    const instanceIds: string[] = ctx.args.instance_ids ?? [];
+
+    if (instanceIds.length === 0) {
+      return "请提供要关闭的实例 ID 列表";
+    }
+
+    try {
+      await clients.lighthouse.StopInstances({
+        InstanceIds: instanceIds,
+      });
+
+      return `已发起关机请求，实例: ${instanceIds.join(", ")}`;
+    } catch (err: any) {
+      return `关闭轻量服务器失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 重启轻量服务器实例
+  handlers.set("reboot_lighthouse", async (ctx) => {
+    const instanceIds: string[] = ctx.args.instance_ids ?? [];
+
+    if (instanceIds.length === 0) {
+      return "请提供要重启的实例 ID 列表";
+    }
+
+    try {
+      await clients.lighthouse.RebootInstances({
+        InstanceIds: instanceIds,
+      });
+
+      return `已发起重启请求，实例: ${instanceIds.join(", ")}`;
+    } catch (err: any) {
+      return `重启轻量服务器失败: ${err.message ?? err}`;
     }
   });
 

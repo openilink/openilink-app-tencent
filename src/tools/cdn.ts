@@ -1,6 +1,6 @@
 /**
  * CDN Tools
- * 提供 CDN 域名列出、URL 刷新和预热能力
+ * 提供 CDN 域名列出、URL 刷新预热、域名添加/删除/启停能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -76,6 +76,67 @@ const definitions: ToolDefinition[] = [
         metric: { type: "string", description: "指标: bandwidth（带宽）或 flux（流量），默认 bandwidth" },
       },
       required: ["start_time", "end_time"],
+    },
+  },
+  {
+    name: "add_cdn_domain",
+    description: "添加 CDN 加速域名",
+    command: "add_cdn_domain",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "加速域名" },
+        service_type: {
+          type: "string",
+          description: "业务类型: web（静态加速）、download（下载加速）、media（流媒体加速），默认 web",
+        },
+        origin_type: {
+          type: "string",
+          description: "源站类型: domain（域名源站）、ip（IP 源站）、cos（COS 源站），默认 domain",
+        },
+        origins: {
+          type: "array",
+          items: { type: "string" },
+          description: "源站地址列表",
+        },
+      },
+      required: ["domain", "origins"],
+    },
+  },
+  {
+    name: "delete_cdn_domain",
+    description: "删除 CDN 加速域名（需先停用）",
+    command: "delete_cdn_domain",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "要删除的加速域名" },
+      },
+      required: ["domain"],
+    },
+  },
+  {
+    name: "start_cdn_domain",
+    description: "启用 CDN 加速域名",
+    command: "start_cdn_domain",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "要启用的加速域名" },
+      },
+      required: ["domain"],
+    },
+  },
+  {
+    name: "stop_cdn_domain",
+    description: "停用 CDN 加速域名",
+    command: "stop_cdn_domain",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "要停用的加速域名" },
+      },
+      required: ["domain"],
     },
   },
 ];
@@ -232,6 +293,78 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return lines.join("\n");
     } catch (err: any) {
       return `查询 CDN 用量失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 添加 CDN 加速域名
+  handlers.set("add_cdn_domain", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+    const serviceType: string = ctx.args.service_type ?? "web";
+    const originType: string = ctx.args.origin_type ?? "domain";
+    const origins: string[] = ctx.args.origins ?? [];
+
+    if (!domain || origins.length === 0) {
+      return "请提供加速域名和源站地址";
+    }
+
+    try {
+      await clients.cdn.AddCdnDomain({
+        Domain: domain,
+        ServiceType: serviceType,
+        Origin: {
+          OriginType: originType,
+          Origins: origins,
+        },
+      });
+
+      return `CDN 域名添加成功!\n域名: ${domain}\n业务类型: ${serviceType}\n源站: ${origins.join(", ")}\n\n请到域名 DNS 添加 CNAME 记录完成接入。`;
+    } catch (err: any) {
+      return `添加 CDN 域名失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 删除 CDN 加速域名
+  handlers.set("delete_cdn_domain", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+
+    try {
+      await clients.cdn.DeleteCdnDomain({
+        Domain: domain,
+      });
+
+      return `CDN 域名 ${domain} 已删除`;
+    } catch (err: any) {
+      return `删除 CDN 域名失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 启用 CDN 加速域名
+  handlers.set("start_cdn_domain", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+
+    try {
+      await clients.cdn.StartCdnDomain({
+        Domain: domain,
+      });
+
+      return `CDN 域名 ${domain} 已启用`;
+    } catch (err: any) {
+      return `启用 CDN 域名失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 停用 CDN 加速域名
+  handlers.set("stop_cdn_domain", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+
+    try {
+      await clients.cdn.StopCdnDomain({
+        Domain: domain,
+      });
+
+      return `CDN 域名 ${domain} 已停用`;
+    } catch (err: any) {
+      return `停用 CDN 域名失败: ${err.message ?? err}`;
     }
   });
 

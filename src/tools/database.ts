@@ -1,6 +1,6 @@
 /**
  * 数据库 Tools（MySQL / Redis / MongoDB）
- * 提供数据库实例的列出和查看详情能力
+ * 提供数据库实例的列出、查看详情和重启能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -66,6 +66,18 @@ const definitions: ToolDefinition[] = [
         limit: { type: "number", description: "返回数量，默认 20" },
         offset: { type: "number", description: "偏移量，默认 0" },
       },
+    },
+  },
+  {
+    name: "restart_mysql",
+    description: "重启 MySQL（CDB）实例",
+    command: "restart_mysql",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_id: { type: "string", description: "MySQL 实例 ID，如 cdb-xxxxxxxx" },
+      },
+      required: ["instance_id"],
     },
   },
 ];
@@ -244,6 +256,26 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `MongoDB 实例列表（共 ${total} 个，当前显示 ${instances.length} 个）:\n${lines.join("\n")}`;
     } catch (err: any) {
       return `列出 MongoDB 实例失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 重启 MySQL 实例
+  handlers.set("restart_mysql", async (ctx) => {
+    const instanceId: string = ctx.args.instance_id ?? "";
+
+    if (!instanceId) {
+      return "请提供要重启的 MySQL 实例 ID";
+    }
+
+    try {
+      const res = await clients.cdb.RestartDBInstances({
+        InstanceIds: [instanceId],
+      });
+
+      const asyncRequestId = (res as any).AsyncRequestId ?? "";
+      return `MySQL 实例 ${instanceId} 重启请求已提交${asyncRequestId ? `\n异步任务 ID: ${asyncRequestId}` : ""}`;
+    } catch (err: any) {
+      return `重启 MySQL 实例失败: ${err.message ?? err}`;
     }
   });
 

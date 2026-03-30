@@ -1,6 +1,6 @@
 /**
  * CVM 云服务器 Tools
- * 提供 CVM 实例的列出、查看、启动、停止、重启能力
+ * 提供 CVM 实例的列出、查看、启动、停止、重启、创建、销毁、改名、重置密码能力
  */
 import type { ToolDefinition, ToolHandler } from "../hub/types.js";
 import type { TencentClients } from "../tencent/client.js";
@@ -118,6 +118,83 @@ const definitions: ToolDefinition[] = [
         instance_id: { type: "string", description: "实例 ID，如 ins-xxxxxxxx" },
       },
       required: ["instance_id"],
+    },
+  },
+  {
+    name: "create_instance",
+    description: "创建 CVM 实例（参数较复杂，建议通过控制台创建。此处仅提供基础快速创建）",
+    command: "create_instance",
+    parameters: {
+      type: "object",
+      properties: {
+        zone: { type: "string", description: "可用区，如 ap-guangzhou-3" },
+        instance_type: { type: "string", description: "实例机型，如 S5.MEDIUM2" },
+        image_id: { type: "string", description: "镜像 ID，如 img-xxxxxxxx" },
+        instance_name: { type: "string", description: "实例名称" },
+        instance_charge_type: {
+          type: "string",
+          description: "计费模式: POSTPAID_BY_HOUR（按量）或 PREPAID（包年包月），默认 POSTPAID_BY_HOUR",
+        },
+        system_disk_type: { type: "string", description: "系统盘类型，如 CLOUD_PREMIUM、CLOUD_SSD，默认 CLOUD_PREMIUM" },
+        system_disk_size: { type: "number", description: "系统盘大小(GB)，默认 50" },
+        vpc_id: { type: "string", description: "VPC ID" },
+        subnet_id: { type: "string", description: "子网 ID" },
+        security_group_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "安全组 ID 列表",
+        },
+        password: { type: "string", description: "实例登录密码" },
+      },
+      required: ["zone", "instance_type", "image_id"],
+    },
+  },
+  {
+    name: "terminate_instance",
+    description: "退还/销毁 CVM 实例（按量计费立即销毁，包年包月退还）",
+    command: "terminate_instance",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "要销毁的实例 ID 列表",
+        },
+      },
+      required: ["instance_ids"],
+    },
+  },
+  {
+    name: "modify_instance_name",
+    description: "修改 CVM 实例名称",
+    command: "modify_instance_name",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_id: { type: "string", description: "实例 ID" },
+        instance_name: { type: "string", description: "新的实例名称" },
+      },
+      required: ["instance_id", "instance_name"],
+    },
+  },
+  {
+    name: "reset_instance_password",
+    description: "重置 CVM 实例密码（需要实例处于关机状态或操作后重启生效）",
+    command: "reset_instance_password",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_ids: {
+          type: "array",
+          items: { type: "string" },
+          description: "实例 ID 列表",
+        },
+        password: { type: "string", description: "新密码" },
+        username: { type: "string", description: "用户名，Linux 默认 root，Windows 默认 Administrator" },
+        force_stop: { type: "boolean", description: "是否强制关机后重置，默认 false" },
+      },
+      required: ["instance_ids", "password"],
     },
   },
 ];
@@ -359,6 +436,119 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return lines.join("\n");
     } catch (err: any) {
       return `获取磁盘信息失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 创建 CVM 实例
+  handlers.set("create_instance", async (ctx) => {
+    const zone: string = ctx.args.zone ?? "";
+    const instanceType: string = ctx.args.instance_type ?? "";
+    const imageId: string = ctx.args.image_id ?? "";
+    const instanceName: string = ctx.args.instance_name ?? "未命名实例";
+    const chargeType: string = ctx.args.instance_charge_type ?? "POSTPAID_BY_HOUR";
+    const sysDiskType: string = ctx.args.system_disk_type ?? "CLOUD_PREMIUM";
+    const sysDiskSize = (ctx.args.system_disk_size as number) ?? 50;
+    const vpcId: string = ctx.args.vpc_id ?? "";
+    const subnetId: string = ctx.args.subnet_id ?? "";
+    const securityGroupIds: string[] = ctx.args.security_group_ids ?? [];
+    const password: string = ctx.args.password ?? "";
+
+    try {
+      const params: any = {
+        Placement: { Zone: zone },
+        InstanceType: instanceType,
+        ImageId: imageId,
+        InstanceName: instanceName,
+        InstanceChargeType: chargeType,
+        SystemDisk: { DiskType: sysDiskType, DiskSize: sysDiskSize },
+      };
+
+      if (vpcId) {
+        params.VirtualPrivateCloud = {
+          VpcId: vpcId,
+          SubnetId: subnetId,
+        };
+      }
+
+      if (securityGroupIds.length > 0) {
+        params.SecurityGroupIds = securityGroupIds;
+      }
+
+      if (password) {
+        params.LoginSettings = { Password: password };
+      }
+
+      const res = await clients.cvm.RunInstances(params);
+      const instanceIds = res.InstanceIdSet ?? [];
+      return `CVM 实例创建成功!\n实例 ID: ${instanceIds.join(", ")}\n名称: ${instanceName}\n可用区: ${zone}\n机型: ${instanceType}\n\n提示: 创建 CVM 涉及大量参数（网络、磁盘、镜像、安全组等），建议在腾讯云控制台进行复杂配置。`;
+    } catch (err: any) {
+      return `创建 CVM 实例失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 退还/销毁 CVM 实例
+  handlers.set("terminate_instance", async (ctx) => {
+    const instanceIds: string[] = ctx.args.instance_ids ?? [];
+
+    if (instanceIds.length === 0) {
+      return "请提供要销毁的实例 ID 列表";
+    }
+
+    try {
+      await clients.cvm.TerminateInstances({
+        InstanceIds: instanceIds,
+      });
+
+      return `已发起销毁请求，实例: ${instanceIds.join(", ")}\n按量计费实例将立即销毁，包年包月实例将退还。`;
+    } catch (err: any) {
+      return `销毁实例失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 修改 CVM 实例名称
+  handlers.set("modify_instance_name", async (ctx) => {
+    const instanceId: string = ctx.args.instance_id ?? "";
+    const instanceName: string = ctx.args.instance_name ?? "";
+
+    try {
+      await clients.cvm.ModifyInstancesAttribute({
+        InstanceIds: [instanceId],
+        InstanceName: instanceName,
+      });
+
+      return `实例 ${instanceId} 名称已修改为: ${instanceName}`;
+    } catch (err: any) {
+      return `修改实例名称失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 重置 CVM 实例密码
+  handlers.set("reset_instance_password", async (ctx) => {
+    const instanceIds: string[] = ctx.args.instance_ids ?? [];
+    const password: string = ctx.args.password ?? "";
+    const username: string = ctx.args.username ?? "";
+    const forceStop: boolean = ctx.args.force_stop ?? false;
+
+    if (instanceIds.length === 0) {
+      return "请提供要重置密码的实例 ID 列表";
+    }
+
+    try {
+      const params: any = {
+        InstanceIds: instanceIds,
+        Password: password,
+        ForceStop: forceStop,
+      };
+
+      if (username) {
+        params.UserName = username;
+      }
+
+      await clients.cvm.ResetInstancesPassword(params);
+
+      return `已发起密码重置请求，实例: ${instanceIds.join(", ")}\n${forceStop ? "将强制关机后重置密码" : "请确保实例已关机，或在重启后生效"}`;
+    } catch (err: any) {
+      return `重置密码失败: ${err.message ?? err}`;
     }
   });
 
