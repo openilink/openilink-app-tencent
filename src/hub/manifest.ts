@@ -63,6 +63,6 @@ export function getManifest(
       required: ["tencent_secret_id", "tencent_secret_key"],
     },
     guide:
-      "## 腾讯云安装指南\n### 第 1 步\n访问 [腾讯云控制台 - API 密钥管理](https://console.cloud.tencent.com/cam/capi)\n### 第 2 步\n创建或复制 SecretId 和 SecretKey\n### 第 3 步\n将 SecretId 和 SecretKey 填入上方配置并安装",
+      "## 腾讯云安装指南\n### 第 1 步\n访问 [腾讯云控制台 - API 密钥管理](https://console.cloud.tencent.com/cam/capi)\n### 第 2 步\n创建或复制 SecretId 和 SecretKey\n### 第 3 步\n将 SecretId 和 SecretKey 填入上方配置并安装\n\n安装后可通过 /settings 页面随时修改配置。",
   };
 }

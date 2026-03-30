@@ -10,9 +10,9 @@ export interface Config {
   baseUrl: string;
   /** SQLite 数据库路径 */
   dbPath: string;
-  /** 腾讯云 SecretId（必填） */
+  /** 腾讯云 SecretId（可选，云端托管模式下由用户在安装时填写） */
   tencentSecretId: string;
-  /** 腾讯云 SecretKey（必填） */
+  /** 腾讯云 SecretKey（可选，云端托管模式下由用户在安装时填写） */
   tencentSecretKey: string;
   /** 腾讯云地域（默认 ap-guangzhou） */
   tencentRegion: string;
@@ -33,11 +33,10 @@ export function loadConfig(): Config {
     tencentRegion: env("TENCENT_REGION", "ap-guangzhou"),
   };
 
+  // SecretId/SecretKey 在云端托管模式下由用户安装时填写，不再强制校验
   const missing: string[] = [];
   if (!cfg.hubUrl) missing.push("HUB_URL");
   if (!cfg.baseUrl) missing.push("BASE_URL");
-  if (!cfg.tencentSecretId) missing.push("TENCENT_SECRET_ID");
-  if (!cfg.tencentSecretKey) missing.push("TENCENT_SECRET_KEY");
 
   if (missing.length > 0) {
     throw new Error(`缺少必填环境变量: ${missing.join(", ")}`);
