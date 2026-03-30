@@ -229,3 +229,18 @@ export function createClientsProxy(): TencentClients {
     },
   });
 }
+
+/**
+ * 从当前客户端实例中提取凭证和地域信息。
+ * 用于通用 API 调用工具动态创建 CommonClient。
+ */
+export function getCurrentCredential(): TencentCredential {
+  const clients = getCurrentClients();
+  // 从任意一个已有 client 实例中读取凭证（所有 client 共享同一份凭证）
+  const cvm = clients.cvm as any;
+  return {
+    secretId: cvm.credential.secretId,
+    secretKey: cvm.credential.secretKey,
+    region: cvm.region || "ap-guangzhou",
+  };
+}

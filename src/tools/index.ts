@@ -23,6 +23,7 @@ import { securityTools } from "./security.js";
 import { databaseTools } from "./database.js";
 import { scfTools } from "./scf.js";
 import { domainTools } from "./domain.js";
+import { apiTools } from "./api.js";
 
 /** 所有 tool 模块列表 */
 const modules: ToolModule[] = [
@@ -37,6 +38,7 @@ const modules: ToolModule[] = [
   databaseTools,
   scfTools,
   domainTools,
+  apiTools,
 ];
 
 /**
