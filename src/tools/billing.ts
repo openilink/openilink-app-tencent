@@ -61,14 +61,14 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       const res = await clients.billing.DescribeAccountBalance({});
 
       const balance = res.Balance !== undefined ? (Number(res.Balance) / 100).toFixed(2) : "未知";
-      const cash = res.RealBalance !== undefined ? (Number(res.RealBalance) / 100).toFixed(2) : "未知";
-      const voucher = res.CashAccountBalance !== undefined ? (Number(res.CashAccountBalance) / 100).toFixed(2) : "未知";
+      const cashAccount = res.CashAccountBalance !== undefined ? (Number(res.CashAccountBalance) / 100).toFixed(2) : "未知";
+      const realBalance = res.RealBalance !== undefined ? (Number(res.RealBalance) / 100).toFixed(2) : "未知";
 
       const lines = [
         `腾讯云账户余额`,
         `可用余额: ¥${balance}`,
-        `现金余额: ¥${cash}`,
-        `代金券余额: ¥${voucher}`,
+        `现金账户余额: ¥${cashAccount}`,
+        `真实可用余额: ¥${realBalance}`,
       ];
 
       return lines.join("\n");

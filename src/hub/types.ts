@@ -35,6 +35,8 @@ export interface Installation {
   appToken: string;
   webhookSecret: string;
   createdAt: string;
+  /** 每个安装实例的自定义配置（如腾讯云凭证等） */
+  config?: Record<string, string>;
 }
 
 /** Tool 定义（注册到 Hub manifest） */

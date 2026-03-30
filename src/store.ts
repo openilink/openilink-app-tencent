@@ -28,21 +28,39 @@ export class Store {
         bot_id TEXT NOT NULL,
         app_token TEXT NOT NULL,
         webhook_secret TEXT NOT NULL,
-        created_at TEXT DEFAULT (datetime('now'))
+        created_at TEXT DEFAULT (datetime('now')),
+        config TEXT DEFAULT '{}'
       );
     `);
+
+    // 兼容旧表：如果 config 列不存在则添加
+    const cols = this.db.pragma("table_info(installations)") as any[];
+    if (!cols.some((c: any) => c.name === "config")) {
+      this.db.exec(`ALTER TABLE installations ADD COLUMN config TEXT DEFAULT '{}'`);
+    }
   }
 
   // ─── 安装管理 ───
 
   saveInstallation(inst: Installation): void {
+    const configJson = JSON.stringify(inst.config ?? {});
     this.db
       .prepare(
         `INSERT OR REPLACE INTO installations
-         (id, hub_url, app_id, bot_id, app_token, webhook_secret, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+         (id, hub_url, app_id, bot_id, app_token, webhook_secret, created_at, config)
+         VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)`,
       )
-      .run(inst.id, inst.hubUrl, inst.appId, inst.botId, inst.appToken, inst.webhookSecret);
+      .run(inst.id, inst.hubUrl, inst.appId, inst.botId, inst.appToken, inst.webhookSecret, configJson);
+  }
+
+  /** 解析安装记录的 config JSON 字段 */
+  private parseConfig(raw: string | undefined | null): Record<string, string> {
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
   }
 
   getInstallation(id: string): Installation | undefined {
@@ -58,6 +76,7 @@ export class Store {
       appToken: row.app_token,
       webhookSecret: row.webhook_secret,
       createdAt: row.created_at,
+      config: this.parseConfig(row.config),
     };
   }
 
@@ -71,6 +90,7 @@ export class Store {
       appToken: row.app_token,
       webhookSecret: row.webhook_secret,
       createdAt: row.created_at,
+      config: this.parseConfig(row.config),
     }));
   }
 

@@ -10,7 +10,7 @@ import { handleWebhook } from "./hub/webhook.js";
 import { handleOAuthSetup, handleOAuthRedirect } from "./hub/oauth.js";
 import { getManifest } from "./hub/manifest.js";
 import { collectAllTools } from "./tools/index.js";
-import { createAllClients } from "./tencent/client.js";
+import { createAllClients, setCurrentClients } from "./tencent/client.js";
 import type { HubEvent, Installation } from "./hub/types.js";
 
 /** 解析请求 URL 的路径和方法 */
@@ -29,16 +29,17 @@ async function main(): Promise<void> {
   const store = new Store(config.dbPath);
   console.log("[main] 数据库初始化完成");
 
-  // 3. 初始化腾讯云客户端
-  const clients = createAllClients({
+  // 3. 初始化默认腾讯云客户端（作为 fallback）
+  const defaultClients = createAllClients({
     secretId: config.tencentSecretId,
     secretKey: config.tencentSecretKey,
     region: config.tencentRegion,
   });
-  console.log("[main] 腾讯云客户端初始化完成");
+  setCurrentClients(defaultClients);
+  console.log("[main] 腾讯云默认客户端初始化完成");
 
-  // 4. 收集所有 tools
-  const { definitions, handlers } = collectAllTools(clients);
+  // 4. 收集所有 tools（handler 通过代理自动使用当前 installation 的客户端）
+  const { definitions, handlers } = collectAllTools();
   console.log(`[main] 已注册 ${definitions.length} 个工具`);
 
   // 5. 初始化路由器
@@ -51,10 +52,18 @@ async function main(): Promise<void> {
 
   /**
    * 处理 command 事件（同步/异步超时由 webhook 层控制）
-   * 返回工具执行结果文本，null 表示无需回复
+   * 每次请求根据 installation.config 切换到对应的腾讯云凭证。
+   * 返回工具执行结果文本，null 表示无需回复。
    */
   async function onCommand(event: HubEvent, installation: Installation): Promise<string | null> {
     if (!event.event) return null;
+
+    // per-installation 凭证隔离：优先使用安装实例的自定义配置
+    const secretId = installation.config?.tencent_secret_id || config.tencentSecretId;
+    const secretKey = installation.config?.tencent_secret_key || config.tencentSecretKey;
+    const region = installation.config?.tencent_region || config.tencentRegion;
+    setCurrentClients(createAllClients({ secretId, secretKey, region }));
+
     const hubClient = getHubClient(installation);
     const result = await router.handleCommand(event, installation, hubClient);
     return result;

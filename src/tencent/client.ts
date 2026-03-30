@@ -123,3 +123,31 @@ export function createAllClients(cred: TencentCredential): TencentClients {
     vpc: createVpcClient(cred),
   };
 }
+
+// ─── 模块级变量：per-installation 凭证隔离 ───
+
+/** 当前请求使用的客户端实例（由 onCommand 在每次请求前设置） */
+let _currentClients: TencentClients;
+
+/** 设置当前请求的客户端实例 */
+export function setCurrentClients(c: TencentClients): void {
+  _currentClients = c;
+}
+
+/** 获取当前请求的客户端实例 */
+export function getCurrentClients(): TencentClients {
+  return _currentClients;
+}
+
+/**
+ * 创建一个代理对象，所有属性访问都委托给 getCurrentClients()。
+ * 这样 handler 闭包中引用的 clients 会自动使用当前 installation 的客户端。
+ */
+export function createClientsProxy(): TencentClients {
+  return new Proxy({} as TencentClients, {
+    get(_target, prop: string) {
+      const real = getCurrentClients();
+      return real[prop as keyof TencentClients];
+    },
+  });
+}
