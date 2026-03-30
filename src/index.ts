@@ -52,16 +52,17 @@ async function main(): Promise<void> {
 
   /**
    * 处理 command 事件（同步/异步超时由 webhook 层控制）
-   * 每次请求根据 installation.config 切换到对应的腾讯云凭证。
+   * 从本地加密存储读取 per-installation 配置，动态切换腾讯云凭证。
    * 返回工具执行结果文本，null 表示无需回复。
    */
   async function onCommand(event: HubEvent, installation: Installation): Promise<string | null> {
     if (!event.event) return null;
 
-    // per-installation 凭证隔离：优先使用安装实例的自定义配置
-    const secretId = installation.config?.tencent_secret_id || config.tencentSecretId;
-    const secretKey = installation.config?.tencent_secret_key || config.tencentSecretKey;
-    const region = installation.config?.tencent_region || config.tencentRegion;
+    // 从加密存储读取 per-installation 配置，替代内存中的 installation.config
+    const localConfig = store.getDecryptedConfig(installation.id);
+    const secretId = localConfig.tencent_secret_id || config.tencentSecretId;
+    const secretKey = localConfig.tencent_secret_key || config.tencentSecretKey;
+    const region = localConfig.tencent_region || config.tencentRegion;
     setCurrentClients(createAllClients({ secretId, secretKey, region }));
 
     const hubClient = getHubClient(installation);
@@ -111,8 +112,16 @@ async function main(): Promise<void> {
           createdAt: new Date().toISOString(),
         });
         console.log("[oauth] 模式2安装成功, installation_id:", data.installation_id);
+        // 安装后从 Hub 拉取用户配置并加密存储
+        const mode2HubClient = new HubClient(data.hub_url || config.hubUrl, data.app_token);
+        mode2HubClient.fetchConfig().then((userConfig) => {
+          if (Object.keys(userConfig).length > 0) {
+            store.saveEncryptedConfig(data.installation_id, userConfig);
+            console.log("[oauth] 模式2用户配置已加密存储");
+          }
+        }).catch((err) => console.error("[oauth] 模式2拉取配置失败:", err));
         // 异步同步工具定义到 Hub
-        new HubClient(data.hub_url || config.hubUrl, data.app_token)
+        mode2HubClient
           .syncTools(definitions)
           .catch((err) => console.error("[oauth] 模式2同步工具失败:", err));
         res.writeHead(200, { "Content-Type": "application/json" });
