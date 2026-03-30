@@ -52,6 +52,32 @@ const definitions: ToolDefinition[] = [
       required: ["urls"],
     },
   },
+  {
+    name: "get_cdn_domain_detail",
+    description: "获取 CDN 域名详细配置",
+    command: "get_cdn_domain_detail",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "CDN 加速域名" },
+      },
+      required: ["domain"],
+    },
+  },
+  {
+    name: "get_cdn_usage",
+    description: "查询 CDN 用量统计数据（带宽或流量）",
+    command: "get_cdn_usage",
+    parameters: {
+      type: "object",
+      properties: {
+        start_time: { type: "string", description: "起始时间，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:mm:ss" },
+        end_time: { type: "string", description: "结束时间，格式 YYYY-MM-DD 或 YYYY-MM-DD HH:mm:ss" },
+        metric: { type: "string", description: "指标: bandwidth（带宽）或 flux（流量），默认 bandwidth" },
+      },
+      required: ["start_time", "end_time"],
+    },
+  },
 ];
 
 /** 创建 CDN 模块的 handler 映射 */
@@ -127,6 +153,85 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `URL 预热任务已提交!\n任务ID: ${taskId}\n预热 URL 数量: ${urls.length}`;
     } catch (err: any) {
       return `URL 预热失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 获取 CDN 域名详细配置
+  handlers.set("get_cdn_domain_detail", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+
+    try {
+      const res = await clients.cdn.DescribeDomainsConfig({
+        Filters: [
+          { Name: "domain", Value: [domain] },
+        ],
+      });
+
+      const domains = res.Domains ?? [];
+      if (domains.length === 0) {
+        return `未找到 CDN 域名: ${domain}`;
+      }
+
+      const d = domains[0] as any;
+      const lines = [
+        `域名: ${d.Domain ?? domain}`,
+        `状态: ${d.Status ?? "未知"}`,
+        `CNAME: ${d.Cname ?? "无"}`,
+        `业务类型: ${d.ServiceType ?? "未知"}`,
+        `创建时间: ${d.CreateTime ?? "未知"}`,
+        `更新时间: ${d.UpdateTime ?? "未知"}`,
+        `源站类型: ${d.Origin?.OriginType ?? "未知"}`,
+        `源站地址: ${(d.Origin?.Origins ?? []).join(", ") || "无"}`,
+        `HTTPS: ${d.Https?.Switch ?? "未知"}`,
+      ];
+
+      return lines.join("\n");
+    } catch (err: any) {
+      return `获取 CDN 域名详情失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 查询 CDN 用量统计
+  handlers.set("get_cdn_usage", async (ctx) => {
+    const startTime: string = ctx.args.start_time ?? "";
+    const endTime: string = ctx.args.end_time ?? "";
+    const metric: string = ctx.args.metric ?? "bandwidth";
+
+    try {
+      const res = await clients.cdn.DescribeCdnData({
+        StartTime: startTime,
+        EndTime: endTime,
+        Metric: metric,
+      });
+
+      const data = res.Data ?? [];
+      if (data.length === 0) {
+        return "暂无用量数据";
+      }
+
+      const metricName = metric === "bandwidth" ? "带宽" : "流量";
+      const lines: string[] = [`CDN ${metricName}统计 (${startTime} ~ ${endTime}):`];
+
+      for (const item of data) {
+        const resource = (item as any).Resource ?? "全部";
+        const details = (item as any).CdnData ?? [];
+        lines.push(`\n资源: ${resource}`);
+        for (const detail of details) {
+          const metricLabel = detail.Metric ?? metric;
+          const values = detail.DetailData ?? [];
+          if (values.length > 0) {
+            // 只显示汇总信息，避免过长
+            const nums = values.map((v: any) => v.Value ?? 0);
+            const max = Math.max(...nums);
+            const avg = nums.reduce((a: number, b: number) => a + b, 0) / nums.length;
+            lines.push(`  ${metricLabel}: 峰值 ${max.toFixed(2)} | 均值 ${avg.toFixed(2)} | 数据点 ${nums.length} 个`);
+          }
+        }
+      }
+
+      return lines.join("\n");
+    } catch (err: any) {
+      return `查询 CDN 用量失败: ${err.message ?? err}`;
     }
   });
 

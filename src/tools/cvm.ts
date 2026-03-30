@@ -80,6 +80,46 @@ const definitions: ToolDefinition[] = [
       required: ["instance_ids"],
     },
   },
+  {
+    name: "list_images",
+    description: "列出可用镜像",
+    command: "list_images",
+    parameters: {
+      type: "object",
+      properties: {
+        image_type: {
+          type: "string",
+          description: "镜像类型: PUBLIC_IMAGE（公共）、PRIVATE_IMAGE（自定义）、SHARED_IMAGE（共享），默认 PRIVATE_IMAGE",
+        },
+        limit: { type: "number", description: "返回数量，默认 20" },
+        offset: { type: "number", description: "偏移量，默认 0" },
+      },
+    },
+  },
+  {
+    name: "list_key_pairs",
+    description: "列出 SSH 密钥对",
+    command: "list_key_pairs",
+    parameters: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "返回数量，默认 20" },
+        offset: { type: "number", description: "偏移量，默认 0" },
+      },
+    },
+  },
+  {
+    name: "list_disks",
+    description: "列出实例的磁盘信息（系统盘和数据盘）",
+    command: "list_disks",
+    parameters: {
+      type: "object",
+      properties: {
+        instance_id: { type: "string", description: "实例 ID，如 ins-xxxxxxxx" },
+      },
+      required: ["instance_id"],
+    },
+  },
 ];
 
 /** 创建 CVM 模块的 handler 映射 */
@@ -209,6 +249,116 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `已发起重启请求，实例: ${instanceIds.join(", ")}`;
     } catch (err: any) {
       return `重启实例失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 列出镜像
+  handlers.set("list_images", async (ctx) => {
+    const imageType: string = ctx.args.image_type ?? "PRIVATE_IMAGE";
+    const limit = (ctx.args.limit as number) ?? 20;
+    const offset = (ctx.args.offset as number) ?? 0;
+
+    try {
+      const res = await clients.cvm.DescribeImages({
+        Filters: [
+          { Name: "image-type", Values: [imageType] },
+        ],
+        Limit: limit,
+        Offset: offset,
+      });
+
+      const images = res.ImageSet ?? [];
+      const total = res.TotalCount ?? 0;
+
+      if (images.length === 0) {
+        return "暂无镜像";
+      }
+
+      const lines = images.map((img: any, i: number) => {
+        const name = img.ImageName ?? "未命名";
+        const id = img.ImageId ?? "";
+        const state = img.ImageState ?? "未知";
+        const size = img.ImageSize ?? 0;
+        const os = img.OsName ?? "未知";
+        return `${offset + i + 1}. ${name} (${id})\n   状态: ${state} | 大小: ${size}GB | 系统: ${os}`;
+      });
+
+      return `镜像列表（共 ${total} 个，当前显示 ${images.length} 个）:\n${lines.join("\n")}`;
+    } catch (err: any) {
+      return `列出镜像失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 列出密钥对
+  handlers.set("list_key_pairs", async (ctx) => {
+    const limit = (ctx.args.limit as number) ?? 20;
+    const offset = (ctx.args.offset as number) ?? 0;
+
+    try {
+      const res = await clients.cvm.DescribeKeyPairs({
+        Limit: limit,
+        Offset: offset,
+      });
+
+      const keyPairs = res.KeyPairSet ?? [];
+      const total = res.TotalCount ?? 0;
+
+      if (keyPairs.length === 0) {
+        return "暂无密钥对";
+      }
+
+      const lines = keyPairs.map((kp: any, i: number) => {
+        const name = kp.KeyName ?? "未命名";
+        const id = kp.KeyId ?? "";
+        const bindCount = kp.AssociatedInstanceIds?.length ?? 0;
+        const createTime = kp.CreatedTime ?? "未知";
+        return `${offset + i + 1}. ${name} (${id})\n   绑定实例数: ${bindCount} | 创建时间: ${createTime}`;
+      });
+
+      return `密钥对列表（共 ${total} 个，当前显示 ${keyPairs.length} 个）:\n${lines.join("\n")}`;
+    } catch (err: any) {
+      return `列出密钥对失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 列出实例磁盘信息
+  handlers.set("list_disks", async (ctx) => {
+    const instanceId: string = ctx.args.instance_id ?? "";
+
+    try {
+      const res = await clients.cvm.DescribeInstances({
+        InstanceIds: [instanceId],
+      });
+
+      const instances = res.InstanceSet ?? [];
+      if (instances.length === 0) {
+        return `未找到实例: ${instanceId}`;
+      }
+
+      const inst = instances[0] as any;
+      const lines: string[] = [`实例 ${inst.InstanceName ?? "未命名"} (${instanceId}) 磁盘信息:`];
+
+      // 系统盘
+      const sysDisk = inst.SystemDisk;
+      if (sysDisk) {
+        lines.push(`\n系统盘:`);
+        lines.push(`  类型: ${sysDisk.DiskType ?? "未知"} | 大小: ${sysDisk.DiskSize ?? 0}GB | ID: ${sysDisk.DiskId ?? "无"}`);
+      }
+
+      // 数据盘
+      const dataDisks = inst.DataDisks ?? [];
+      if (dataDisks.length > 0) {
+        lines.push(`\n数据盘（${dataDisks.length} 块）:`);
+        dataDisks.forEach((disk: any, i: number) => {
+          lines.push(`  ${i + 1}. 类型: ${disk.DiskType ?? "未知"} | 大小: ${disk.DiskSize ?? 0}GB | ID: ${disk.DiskId ?? "无"}`);
+        });
+      } else {
+        lines.push(`\n无数据盘`);
+      }
+
+      return lines.join("\n");
+    } catch (err: any) {
+      return `获取磁盘信息失败: ${err.message ?? err}`;
     }
   });
 

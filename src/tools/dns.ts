@@ -63,6 +63,37 @@ const definitions: ToolDefinition[] = [
       required: ["domain", "record_id"],
     },
   },
+  {
+    name: "update_dns_record",
+    description: "更新 DNS 解析记录",
+    command: "update_dns_record",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "域名，如 example.com" },
+        record_id: { type: "number", description: "记录 ID" },
+        sub_domain: { type: "string", description: "主机记录，如 www、@" },
+        record_type: { type: "string", description: "记录类型，如 A、CNAME、MX、TXT" },
+        record_line: { type: "string", description: "解析线路，默认「默认」" },
+        value: { type: "string", description: "记录值" },
+      },
+      required: ["domain", "record_id", "sub_domain", "record_type", "value"],
+    },
+  },
+  {
+    name: "set_record_status",
+    description: "启用或暂停 DNS 解析记录",
+    command: "set_record_status",
+    parameters: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "域名" },
+        record_id: { type: "number", description: "记录 ID" },
+        status: { type: "string", description: "状态: ENABLE（启用）或 DISABLE（暂停）" },
+      },
+      required: ["domain", "record_id", "status"],
+    },
+  },
 ];
 
 /** 创建 DNS 模块的 handler 映射 */
@@ -174,6 +205,55 @@ function createHandlers(clients: TencentClients): Map<string, ToolHandler> {
       return `已删除域名 ${domain} 的解析记录 (ID: ${recordId})`;
     } catch (err: any) {
       return `删除解析记录失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 更新解析记录
+  handlers.set("update_dns_record", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+    const recordId = ctx.args.record_id as number;
+    const subDomain: string = ctx.args.sub_domain ?? "";
+    const recordType: string = ctx.args.record_type ?? "";
+    const value: string = ctx.args.value ?? "";
+    const recordLine: string = ctx.args.record_line ?? "默认";
+
+    try {
+      await clients.dnspod.ModifyRecord({
+        Domain: domain,
+        RecordId: recordId,
+        SubDomain: subDomain,
+        RecordType: recordType,
+        RecordLine: recordLine,
+        Value: value,
+      });
+
+      return `解析记录更新成功!\n域名: ${subDomain}.${domain}\n类型: ${recordType}\n值: ${value}\n记录ID: ${recordId}`;
+    } catch (err: any) {
+      return `更新解析记录失败: ${err.message ?? err}`;
+    }
+  });
+
+  // 启用/暂停解析记录
+  handlers.set("set_record_status", async (ctx) => {
+    const domain: string = ctx.args.domain ?? "";
+    const recordId = ctx.args.record_id as number;
+    const status: string = ctx.args.status ?? "";
+
+    if (status !== "ENABLE" && status !== "DISABLE") {
+      return "状态参数无效，请使用 ENABLE（启用）或 DISABLE（暂停）";
+    }
+
+    try {
+      await clients.dnspod.ModifyRecordStatus({
+        Domain: domain,
+        RecordId: recordId,
+        Status: status,
+      });
+
+      const statusText = status === "ENABLE" ? "启用" : "暂停";
+      return `已${statusText}域名 ${domain} 的解析记录 (ID: ${recordId})`;
+    } catch (err: any) {
+      return `设置记录状态失败: ${err.message ?? err}`;
     }
   });
 

@@ -21,7 +21,13 @@
     "tencentcloud-sdk-nodejs-dnspod": "^4.0.0",
     "tencentcloud-sdk-nodejs-lighthouse": "^4.0.0",
     "tencentcloud-sdk-nodejs-ssl": "^4.0.0",
-    "tencentcloud-sdk-nodejs-vpc": "^4.1.200"
+    "tencentcloud-sdk-nodejs-vpc": "^4.1.200",
+    "tencentcloud-sdk-nodejs-cdb": "^4.0.0",
+    "tencentcloud-sdk-nodejs-redis": "^4.0.0",
+    "tencentcloud-sdk-nodejs-mongodb": "^4.0.0",
+    "tencentcloud-sdk-nodejs-scf": "^4.0.0",
+    "tencentcloud-sdk-nodejs-domain": "^4.0.0",
+    "tencentcloud-sdk-nodejs-teo": "^4.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",

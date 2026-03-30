@@ -20,6 +20,9 @@ import { sslTools } from "./ssl.js";
 import { clbTools } from "./clb.js";
 import { billingTools } from "./billing.js";
 import { securityTools } from "./security.js";
+import { databaseTools } from "./database.js";
+import { scfTools } from "./scf.js";
+import { domainTools } from "./domain.js";
 
 /** 所有 tool 模块列表 */
 const modules: ToolModule[] = [
@@ -31,6 +34,9 @@ const modules: ToolModule[] = [
   clbTools,
   billingTools,
   securityTools,
+  databaseTools,
+  scfTools,
+  domainTools,
 ];
 
 /**

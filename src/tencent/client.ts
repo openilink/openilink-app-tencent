@@ -10,6 +10,12 @@ import * as tencentClb from "tencentcloud-sdk-nodejs-clb";
 import * as tencentBilling from "tencentcloud-sdk-nodejs-billing";
 import * as tencentLighthouse from "tencentcloud-sdk-nodejs-lighthouse";
 import * as tencentVpc from "tencentcloud-sdk-nodejs-vpc";
+import * as tencentCdb from "tencentcloud-sdk-nodejs-cdb";
+import * as tencentRedis from "tencentcloud-sdk-nodejs-redis";
+import * as tencentMongodb from "tencentcloud-sdk-nodejs-mongodb";
+import * as tencentScf from "tencentcloud-sdk-nodejs-scf";
+import * as tencentDomain from "tencentcloud-sdk-nodejs-domain";
+import * as tencentTeo from "tencentcloud-sdk-nodejs-teo";
 
 /** 统一的认证参数 */
 export interface TencentCredential {
@@ -98,6 +104,66 @@ export function createVpcClient(cred: TencentCredential) {
   });
 }
 
+/** 创建 CDB（MySQL）客户端 */
+export function createCdbClient(cred: TencentCredential) {
+  const CdbClient = tencentCdb.cdb.v20170320.Client;
+  return new CdbClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: cred.region,
+    profile: { httpProfile: { endpoint: "cdb.tencentcloudapi.com" } },
+  });
+}
+
+/** 创建 Redis 客户端 */
+export function createRedisClient(cred: TencentCredential) {
+  const RedisClient = tencentRedis.redis.v20180412.Client;
+  return new RedisClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: cred.region,
+    profile: { httpProfile: { endpoint: "redis.tencentcloudapi.com" } },
+  });
+}
+
+/** 创建 MongoDB 客户端 */
+export function createMongodbClient(cred: TencentCredential) {
+  const MongodbClient = tencentMongodb.mongodb.v20190725.Client;
+  return new MongodbClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: cred.region,
+    profile: { httpProfile: { endpoint: "mongodb.tencentcloudapi.com" } },
+  });
+}
+
+/** 创建 SCF（云函数）客户端 */
+export function createScfClient(cred: TencentCredential) {
+  const ScfClient = tencentScf.scf.v20180416.Client;
+  return new ScfClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: cred.region,
+    profile: { httpProfile: { endpoint: "scf.tencentcloudapi.com" } },
+  });
+}
+
+/** 创建域名注册客户端（全局服务） */
+export function createDomainClient(cred: TencentCredential) {
+  const DomainClient = tencentDomain.domain.v20180808.Client;
+  return new DomainClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: "",
+    profile: { httpProfile: { endpoint: "domain.tencentcloudapi.com" } },
+  });
+}
+
+/** 创建 EdgeOne（TEO）客户端 */
+export function createTeoClient(cred: TencentCredential) {
+  const TeoClient = tencentTeo.teo.v20220901.Client;
+  return new TeoClient({
+    credential: { secretId: cred.secretId, secretKey: cred.secretKey },
+    region: "",
+    profile: { httpProfile: { endpoint: "teo.tencentcloudapi.com" } },
+  });
+}
+
 /** 创建所有产品客户端的集合 */
 export interface TencentClients {
   cvm: ReturnType<typeof createCvmClient>;
@@ -108,6 +174,12 @@ export interface TencentClients {
   billing: ReturnType<typeof createBillingClient>;
   lighthouse: ReturnType<typeof createLighthouseClient>;
   vpc: ReturnType<typeof createVpcClient>;
+  cdb: ReturnType<typeof createCdbClient>;
+  redis: ReturnType<typeof createRedisClient>;
+  mongodb: ReturnType<typeof createMongodbClient>;
+  scf: ReturnType<typeof createScfClient>;
+  domain: ReturnType<typeof createDomainClient>;
+  teo: ReturnType<typeof createTeoClient>;
 }
 
 /** 一次性创建所有产品客户端 */
@@ -121,6 +193,12 @@ export function createAllClients(cred: TencentCredential): TencentClients {
     billing: createBillingClient(cred),
     lighthouse: createLighthouseClient(cred),
     vpc: createVpcClient(cred),
+    cdb: createCdbClient(cred),
+    redis: createRedisClient(cred),
+    mongodb: createMongodbClient(cred),
+    scf: createScfClient(cred),
+    domain: createDomainClient(cred),
+    teo: createTeoClient(cred),
   };
 }
 
